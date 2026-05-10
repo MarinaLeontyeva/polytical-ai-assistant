@@ -1,64 +1,62 @@
-# 🗳️ Political Compass: RAG-ассистент для анализа партийных программ
+# Political Compass: RAG Assistant for Party Program Analysis
 
-RAG-система (Retrieval-Augmented Generation) для анализа программных документов политических партий России. Задайте вопрос — система найдёт релевантные фрагменты из партийных программ и сформирует аналитический ответ.
+A Retrieval-Augmented Generation (RAG) system for analyzing policy documents of Russian political parties. Ask a question, and the system will find relevant excerpts from party programs and generate an analytical answer.
 
-## Архитектура
+## Architecture
 
+```text
++-----------------------------------------------------+
+|                   Streamlit UI                      |
+|              political_assistant.py                 |
++-----------------------+-----------------------------+
+                        |
+                        v
++-----------------------------------------------------+
+|              RAG Pipeline (rag_pipeline.py)         |
++--------------+---------------+----------------------+
+|  FAISS       |  HuggingFace  |  OpenRouter LLM      |
+|  Vector DB   |  Embeddings   |  (free models)       |
++--------------+---------------+----------------------+
+                        ^
+                        |
++-----------------------------------------------------+
+|              Ingestion (ingest.py)                  |
+|  PDF/TXT -> Chunks -> Embeddings -> FAISS Index      |
++-----------------------------------------------------+
 ```
-┌─────────────────────────────────────────────────────┐
-│                   Streamlit UI                      │
-│              political_assistant.py                  │
-└───────────────────────┬─────────────────────────────┘
-                        │
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│              RAG Pipeline (rag_pipeline.py)          │
-├──────────────┬───────────────┬──────────────────────┤
-│  FAISS       │  HuggingFace  │  OpenRouter LLM       │
-│  Vector DB   │  Embeddings   │  (бесплатные модели)  │
-└──────────────┴───────────────┴──────────────────────┘
-                        ▲
-                        │
-┌─────────────────────────────────────────────────────┐
-│              Ingestion (ingest.py)                   │
-│  PDF/TXT → Chunks → Embeddings → FAISS Index         │
-└─────────────────────────────────────────────────────┘
-```
 
----
-
-## Быстрый старт (готовый проект)
+## Quick Start
 
 ```bash
-# 1. Установите зависимости
+# 1. Install dependencies.
 poetry install
 
-# 2. Настройте переменные окружения
+# 2. Configure environment variables.
 cp .env.example .env
-# Отредактируйте .env: добавьте OPENROUTER_API_KEY
+# Edit .env and add OPENROUTER_API_KEY.
 
-# 3. Запустите индексацию (уже есть kprf_2021.pdf)
+# 3. Run indexing. The project already includes kprf_2021.pdf.
 poetry run python ingest.py
 
-# 4. Запустите приложение
+# 4. Start the application.
 poetry run streamlit run political_assistant.py
 ```
 
----
+## Student Assignment
 
-## Задание для студентов
+The base project contains one party program (KPRF). Your task is to extend the system and build a full political compass.
 
-Базовый проект содержит программу одной партии (КПРФ). Ваша задача — расширить систему и сделать полноценный политический компас.
+### Step 1. Add Other Party Programs
 
-### Шаг 1. Загрузите программы других партий
+Add documents to the `data/` directory. File names must follow this format:
 
-Добавьте документы в папку `data/`. Файлы **обязательно** должны называться по формату:
+```text
+{party}_{year}.pdf   or   {party}_{year}.txt
 ```
-{партия}_{год}.pdf   или   {партия}_{год}.txt
-```
 
-Примеры названий:
-```
+Example file names:
+
+```text
 ldpr_2021.pdf
 edinaya_rossiya_2021.pdf
 spravedlivaya_rossiya_2021.pdf
@@ -66,154 +64,146 @@ novye_lyudi_2021.pdf
 yabloko_2021.pdf
 ```
 
-Рекомендуемый набор данных:
+Recommended dataset:
 
-| Партия | Годы | Источники |
-|--------|------|-----------|
-| КПРФ | 2016, 2021 | kprf.ru/party/program |
-| ЛДПР | 2016, 2021 | ldpr.ru/programm |
-| Единая Россия | 2016, 2021 | er.ru/activity/docs |
-| Справедливая Россия | 2016, 2021 | справедливо.рф |
-| Новые люди | 2021 | newpeople.ru |
-| Яблоко | 2016, 2021 | yabloko.ru/program |
+| Party | Years | Sources |
+|-------|-------|---------|
+| KPRF | 2016, 2021 | kprf.ru/party/program |
+| LDPR | 2016, 2021 | ldpr.ru/programm |
+| United Russia | 2016, 2021 | er.ru/activity/docs |
+| A Just Russia | 2016, 2021 | spravedlivo.ru |
+| New People | 2021 | newpeople.ru |
+| Yabloko | 2016, 2021 | yabloko.ru/program |
 
-После добавления документов пересоберите индекс:
+After adding documents, rebuild the index:
+
 ```bash
 poetry run python ingest.py --force-rebuild
 ```
 
-> **Совет:** PDF можно скачать с официальных сайтов партий. Если PDF не скачивается — скопируйте текст программы в `.txt` файл.
+> **Tip:** You can download PDFs from official party websites. If a PDF is unavailable, copy the program text into a `.txt` file.
 
----
+### Step 2. Tune Vector Search
 
-### Шаг 2. Настройте векторный поиск
-
-Откройте [ingest.py](ingest.py) и поэкспериментируйте с параметрами чанкинга:
+Open [ingest.py](ingest.py) and experiment with chunking parameters:
 
 ```python
-# Текущие настройки (строка ~60 в ingest.py):
+# Current settings around line 60 in ingest.py:
 splitter = RecursiveCharacterTextSplitter(
-    chunk_size=800,      # размер фрагмента в символах
-    chunk_overlap=150,   # перекрытие между фрагментами
+    chunk_size=800,      # chunk size in characters
+    chunk_overlap=150,   # overlap between chunks
     separators=["\n\n", "\n", ". ", " ", ""],
 )
 ```
 
-**Задание:** Попробуйте разные значения `chunk_size` (500, 800, 1200) и `chunk_overlap` (50, 150, 250). Как это влияет на качество ответов? Зафиксируйте результаты.
+**Task:** Try different `chunk_size` values (500, 800, 1200) and `chunk_overlap` values (50, 150, 250). How do they affect answer quality? Record your results.
 
-**Дополнительно:** Поменяйте модель эмбеддингов в `ingest.py` и `rag_pipeline.py`:
+**Extra:** Change the embedding model in `ingest.py` and `rag_pipeline.py`:
+
 ```python
-# Варианты (в порядке качество ↑ / скорость ↓):
-EMBEDDING_MODEL = "intfloat/multilingual-e5-small"   # ~120MB, быстро
+# Options, ordered by quality up / speed down:
+EMBEDDING_MODEL = "intfloat/multilingual-e5-small"   # ~120MB, fast
 EMBEDDING_MODEL = "intfloat/multilingual-e5-base"    # ~280MB
-EMBEDDING_MODEL = "intfloat/multilingual-e5-large"   # ~560MB, лучшее качество
+EMBEDDING_MODEL = "intfloat/multilingual-e5-large"   # ~560MB, best quality
 ```
 
----
+### Step 3. Improve Prompts
 
-### Шаг 3. Улучшите промпты
+Open [rag_pipeline.py](rag_pipeline.py). Find the `SINGLE_SYSTEM_PROMPT` and `COMPARE_SYSTEM_PROMPT` variables.
 
-Откройте [rag_pipeline.py](rag_pipeline.py). Найдите переменные `SINGLE_SYSTEM_PROMPT` и `COMPARE_SYSTEM_PROMPT`.
+**Task:** Modify the prompts for different scenarios:
 
-**Задание:** Модифицируйте промпты под разные сценарии:
+1. **Basic analysis** - the current prompt for one party.
+2. **Comparative analysis** - the current prompt for comparison.
+3. **Quote search** - a prompt that returns exact quotes from party programs.
+4. **Ideological classification** - a prompt that places a party on a political compass (left/right, liberal/conservative).
 
-1. **Базовый анализ** — текущий промпт для одной партии
-2. **Сравнительный анализ** — текущий промпт для сравнения
-3. **Поиск цитат** — промпт, который возвращает дословные цитаты из программ
-4. **Идеологическая классификация** — промпт для определения позиции партии на политическом компасе (лево/право, либерал/консерватор)
+Example prompt rule change:
 
-Пример изменения правил промпта:
 ```python
-SINGLE_SYSTEM_PROMPT = """Ты — нейтральный политический аналитик...
+SINGLE_SYSTEM_PROMPT = """You are a neutral political analyst...
 
-Правила ответа:
-1. [ваши правила]
+Answer rules:
+1. [your rules]
 ...
 ```
 
-**Подсказка:** Хороший промпт для политического анализа должен:
-- Исключать галлюцинации (требовать ссылок на текст)
-- Задавать структуру ответа
-- Явно указывать на отсутствие информации
-- Обеспечивать нейтральность тона
+**Hint:** A good political analysis prompt should:
 
----
+- Prevent hallucinations by requiring references to the text.
+- Define the answer structure.
+- Explicitly handle missing information.
+- Ensure a neutral tone.
 
-### Шаг 4. Улучшите интерфейс
+### Step 4. Improve the Interface
 
-Откройте [political_assistant.py](political_assistant.py) и добавьте:
+Open [political_assistant.py](political_assistant.py) and add:
 
-1. **Счётчик источников в чипах:**
+1. **Source counter chips:**
+
    ```python
-   # Покажите партии найденных источников цветными бейджами
+   # Show parties found in the sources as colored badges.
    for party in set(doc.metadata.get("party_display") for doc in docs):
        st.badge(party)
    ```
 
-2. **Примеры вопросов** — добавьте быстрые кнопки с типовыми запросами:
+2. **Example questions** with quick buttons for common queries:
+
    ```python
    example_questions = [
-       "Что партии говорят о пенсионном возрасте?",
-       "Как партии относятся к малому бизнесу?",
-       "Какова позиция партий по внешней политике?",
+       "What do parties say about the retirement age?",
+       "How do parties approach small business?",
+       "What is each party's position on foreign policy?",
    ]
    for q in example_questions:
        if st.button(q):
            handle_user_input(q, pipeline, config)
    ```
 
-3. **Фильтр по году** — добавьте возможность выбрать программы 2016 или 2021 года
+3. **Year filter** to choose programs from 2016 or 2021.
 
-4. **Экспорт ответа** — кнопка для копирования ответа с источниками
+4. **Answer export** with a button to copy the answer and sources.
 
----
+## Test Questions
 
-## Тестовые вопросы
+After adding several parties, test the system:
 
-После загрузки нескольких партий проверьте работу системы:
+| Category | Question |
+|----------|----------|
+| Economy | What are the parties' positions on industrial nationalization? |
+| Social policy | What support measures for pensioners do the parties propose? |
+| Foreign policy | How do the parties assess Russia's relations with the West? |
+| Ideology | Which parties use the term "patriotism", and how do they interpret it? |
+| Missing data | What do the parties think about cryptocurrencies? Expected answer: "not found". |
 
-| Категория | Вопрос |
-|-----------|--------|
-| Экономика | Каковы позиции партий по национализации промышленности? |
-| Социалка | Какие меры поддержки пенсионеров предлагают партии? |
-| Внешняя политика | Как партии оценивают отношения России с Западом? |
-| Идеология | Какие партии используют термин «патриотизм» и как его трактуют? |
-| Отсутствие данных | Что партии думают о криптовалютах? (ожидается: «не найдено») |
+## Project Structure
 
----
-
-## Структура проекта
-
-```
+```text
 .
-├── political_assistant.py  # Streamlit UI
-├── rag_pipeline.py         # RAG: поиск + генерация ответа
-├── ingest.py               # Индексация документов
-├── pyproject.toml          # Зависимости Poetry
-├── .env.example            # Шаблон переменных окружения
-└── data/
-    └── kprf_2021.pdf       # Пример документа (КПРФ)
++-- political_assistant.py  # Streamlit UI
++-- rag_pipeline.py         # RAG: search and answer generation
++-- ingest.py               # Document indexing
++-- pyproject.toml          # Poetry dependencies
++-- .env.example            # Environment variable template
++-- data/
+    +-- kprf_2021.pdf       # Example document (KPRF)
 ```
 
----
+## Grading Criteria
 
-## Критерии оценки
+| Criterion | Weight |
+|-----------|--------|
+| Data loading and processing (3+ parties, metadata) | 15% |
+| Vector search tuning (parameter experiments) | 15% |
+| RAG answer quality (relevance, no hallucinations) | 25% |
+| Prompt quality (neutrality, structure, rules) | 20% |
+| Interface improvements | 15% |
+| Presentation and architecture explanation | 10% |
 
-| Критерий | Вес |
-|----------|-----|
-| Загрузка и обработка данных (3+ партии, метаданные) | 15% |
-| Настройка векторного поиска (эксперименты с параметрами) | 15% |
-| Качество RAG-ответов (релевантность, отсутствие галлюцинаций) | 25% |
-| Качество промптов (нейтральность, структура, правила) | 20% |
-| Улучшения интерфейса | 15% |
-| Презентация и объяснение архитектуры | 10% |
-
----
-
-## Полезные ссылки
+## Useful Links
 
 - [LangChain RAG Tutorial](https://python.langchain.com/docs/tutorials/rag/)
-- [OpenRouter — бесплатные модели](https://openrouter.ai/models?q=free)
+- [OpenRouter free models](https://openrouter.ai/models?q=free)
 - [Streamlit Chat Documentation](https://docs.streamlit.io/develop/api-reference/chat)
 - [FAISS Vector Store (LangChain)](https://python.langchain.com/docs/integrations/vectorstores/faiss/)
 - [Multilingual E5 Embeddings](https://huggingface.co/intfloat/multilingual-e5-small)

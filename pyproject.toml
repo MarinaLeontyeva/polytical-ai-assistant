@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "political-compass-rag"
 version = "0.1.0"
-description = "RAG-ассистент для анализа программ политических партий России"
+description = "RAG assistant for analyzing Russian political party programs"
 authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 

@@ -1,7 +1,7 @@
 """
-Political Compass — RAG-ассистент для анализа партийных программ России.
+Political Compass - RAG assistant for analyzing Russian political party programs.
 
-Запуск:
+Usage:
     poetry run streamlit run political_assistant.py
 """
 
@@ -16,7 +16,7 @@ st.set_page_config(
 )
 
 
-@st.cache_resource(show_spinner="Загрузка векторного индекса...")
+@st.cache_resource(show_spinner="Loading vector index...")
 def load_pipeline() -> PoliticalRAGPipeline | None:
     try:
         return PoliticalRAGPipeline()
@@ -26,34 +26,34 @@ def load_pipeline() -> PoliticalRAGPipeline | None:
 
 
 def render_setup_banner(error_msg: str) -> None:
-    st.error("Ассистент не готов к работе")
+    st.error("The assistant is not ready")
     st.markdown(f"```\n{error_msg}\n```")
     st.markdown("""
-**Инструкции по настройке:**
+**Setup instructions:**
 
-1. Скопируйте файл конфигурации:
+1. Copy the configuration file:
    ```bash
    cp .env.example .env
    ```
 
-2. Получите бесплатный ключ на [openrouter.ai](https://openrouter.ai) и добавьте в `.env`:
+2. Get a free key at [openrouter.ai](https://openrouter.ai) and add it to `.env`:
    ```
    OPENROUTER_API_KEY=sk-or-v1-...
    ```
 
-3. Запустите индексацию документов:
+3. Index the documents:
    ```bash
    poetry run python ingest.py
    ```
 
-4. Перезапустите приложение.
+4. Restart the app.
 """)
 
 
 def render_sources(docs: list) -> None:
     if not docs:
         return
-    with st.expander(f"📚 Источники ({len(docs)} фрагментов)"):
+    with st.expander(f"📚 Sources ({len(docs)} chunks)"):
         for doc in docs:
             meta = doc.metadata
             party = meta.get("party_display", meta.get("party", ""))
@@ -66,18 +66,18 @@ def render_sources(docs: list) -> None:
 
 def get_sidebar_config(pipeline: PoliticalRAGPipeline) -> dict:
     with st.sidebar:
-        st.title("⚙️ Настройки")
+        st.title("⚙️ Settings")
 
         available_parties = pipeline.get_available_parties()
 
-        st.subheader("Фильтр по партиям")
+        st.subheader("Party filter")
         if not available_parties:
-            st.caption("Партии не найдены в индексе")
+            st.caption("No parties found in the index")
             selected_parties = []
         else:
-            all_selected = st.checkbox("Все партии", value=True, key="all_parties")
+            all_selected = st.checkbox("All parties", value=True, key="all_parties")
             if all_selected:
-                selected_parties = None  # None = без фильтра
+                selected_parties = None  # None means no filter.
                 for party in available_parties:
                     st.checkbox(party, value=True, disabled=True, key=f"party_{party}")
             else:
@@ -86,26 +86,26 @@ def get_sidebar_config(pipeline: PoliticalRAGPipeline) -> dict:
                     if st.checkbox(party, value=True, key=f"party_{party}")
                 ]
                 if not selected_parties:
-                    st.warning("Выберите хотя бы одну партию")
+                    st.warning("Select at least one party")
                     selected_parties = None
 
-        st.subheader("Режим анализа")
+        st.subheader("Analysis mode")
         compare_mode = st.toggle(
-            "Сравнить партии",
+            "Compare parties",
             value=False,
-            help="Отдельно извлекает позиции каждой партии и сравнивает их",
+            help="Retrieves each party's position separately and compares them",
         )
 
         if compare_mode and (selected_parties is None or len(selected_parties) < 2):
-            st.warning("Для сравнения выберите 2+ партии (снимите галочку «Все партии»)")
+            st.warning("Select 2+ parties for comparison (clear the All parties checkbox)")
             compare_mode = False
 
         st.divider()
-        if st.button("🗑️ Очистить чат"):
+        if st.button("🗑️ Clear chat"):
             st.session_state.messages = []
             st.rerun()
 
-        st.caption(f"Партий в индексе: {len(available_parties)}")
+        st.caption(f"Parties in index: {len(available_parties)}")
 
     return {
         "party_filter": selected_parties,
@@ -127,7 +127,7 @@ def handle_user_input(prompt: str, pipeline: PoliticalRAGPipeline, config: dict)
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Анализирую документы..."):
+        with st.spinner("Analyzing documents..."):
             try:
                 answer, docs = pipeline.ask(
                     question=prompt,
@@ -135,7 +135,7 @@ def handle_user_input(prompt: str, pipeline: PoliticalRAGPipeline, config: dict)
                     compare_mode=config["compare_mode"],
                 )
             except Exception as e:
-                answer = f"Ошибка при обращении к модели: {e}"
+                answer = f"Model request failed: {e}"
                 docs = []
 
         st.markdown(answer)
@@ -150,7 +150,7 @@ def handle_user_input(prompt: str, pipeline: PoliticalRAGPipeline, config: dict)
 
 def main() -> None:
     st.title("🗳️ Political Compass")
-    st.caption("RAG-ассистент для анализа программ политических партий России")
+    st.caption("RAG assistant for analyzing Russian political party programs")
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -158,7 +158,7 @@ def main() -> None:
     pipeline = load_pipeline()
 
     if pipeline is None:
-        error = st.session_state.get("pipeline_error", "Неизвестная ошибка")
+        error = st.session_state.get("pipeline_error", "Unknown error")
         render_setup_banner(error)
         return
 
@@ -166,9 +166,9 @@ def main() -> None:
     render_chat_history()
 
     placeholder_text = (
-        "Например: Как КПРФ и ЛДПР относятся к национализации?"
+        "Example: How do KPRF and LDPR approach nationalization?"
         if config["compare_mode"]
-        else "Например: Какова позиция КПРФ по вопросам приватизации?"
+        else "Example: What is KPRF's position on privatization?"
     )
 
     if prompt := st.chat_input(placeholder_text):
