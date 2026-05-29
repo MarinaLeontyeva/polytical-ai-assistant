@@ -173,7 +173,7 @@ class PoliticalRAGPipeline:
     def _ask_compare(self, question: str, parties: list[str]) -> tuple[str, list]:
         all_docs = []
         for party in parties:
-            party_docs = self.retrieve(question, party_filter=[party], k=3)
+            party_docs = self.retrieve(question, party_filter=[party], k=5)
             all_docs.extend(party_docs)
 
         if not all_docs:
