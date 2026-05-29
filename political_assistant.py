@@ -10,6 +10,7 @@ Supports 4 analysis modes:
 Usage:
     streamlit run political_assistant.py
 """
+import sys
 from datetime import datetime
 
 import streamlit as st
@@ -126,7 +127,7 @@ def load_pipeline() -> PoliticalRAGPipeline | None:
     if not Path("faiss_index").exists():
         with st.spinner("Building vector index for the first time (5-7 minutes)..."):
             result = subprocess.run(
-                ["python", "ingest.py"],
+              [sys.executable, "ingest.py"],
                 capture_output=True, text=True, timeout=900,
             )
             if result.returncode != 0:
