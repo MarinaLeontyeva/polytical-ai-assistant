@@ -130,7 +130,7 @@ class PoliticalRAGPipeline:
         """Find relevant chunks, optionally filtering by party."""
         if party_filter:
             # Retrieve extra candidates for filtering.
-            candidates = self._vectorstore.similarity_search(query, k=k * 6)
+            candidates = self._vectorstore.similarity_search(query, k=k * 15)
             filtered = [
                 doc for doc in candidates
                 if doc.metadata.get("party_display") in party_filter
