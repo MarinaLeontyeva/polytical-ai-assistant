@@ -120,6 +120,20 @@ EXAMPLE_QUESTIONS = {
 # ============================================================
 @st.cache_resource(show_spinner="Loading vector index...")
 def load_pipeline() -> PoliticalRAGPipeline | None:
+    # Auto-build FAISS index on first startup (Streamlit Cloud starts without one)
+    from pathlib import Path
+    import subprocess
+    if not Path("faiss_index").exists():
+        with st.spinner("Building vector index for the first time (5-7 minutes)..."):
+            result = subprocess.run(
+                ["python", "ingest.py"],
+                capture_output=True, text=True, timeout=900,
+            )
+            if result.returncode != 0:
+                st.session_state["pipeline_error"] = (
+                    f"Failed to build index:\n{result.stderr[-1500:]}"
+                )
+                return None
     try:
         return PoliticalRAGPipeline()
     except (FileNotFoundError, EnvironmentError) as e:
