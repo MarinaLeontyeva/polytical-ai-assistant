@@ -26,7 +26,7 @@ load_dotenv()
 
 PROGRAMS_DIR = os.getenv("PROGRAMS_DIR", "./data")
 FAISS_INDEX_PATH = os.getenv("FAISS_INDEX_PATH", "./faiss_index")
-EMBEDDING_MODEL = "intfloat/multilingual-e5-small"  # ~120MB, works well with Russian text
+EMBEDDING_MODEL = "intfloat/multilingual-e5-base"  # ~120MB, works well with Russian text
 
 PARTY_DISPLAY_NAMES = {
     "kprf": "КПРФ",
@@ -113,8 +113,8 @@ def load_all_documents(programs_dir: str) -> list:
 def chunk_documents(docs: list) -> list:
     """Split documents into overlapping chunks."""
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=150,
+        chunk_size=1200,
+        chunk_overlap=250,
         separators=["\n\n", "\n", ". ", " ", ""],
     )
     chunks = splitter.split_documents(docs)
