@@ -1,68 +1,45 @@
 """
-fake_detector.py — AI text detector.
-Uses RoBERTa-base fine-tuned by OpenAI to detect AI-generated text.
-Model: openai-community/roberta-base-openai-detector (~500MB, fits Streamlit Cloud)
-Inspired by MELD paper (Li et al., 2026).
+deepfake_detector.py — image deepfake detector.
+Uses a pretrained ViT-based classifier from HuggingFace.
+Model: Organika/sdxl-detector
 """
 
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
-import torch.nn.functional as F
+from PIL import Image
+from transformers import pipeline as hf_pipeline
 
-MODEL_NAME = "openai-community/roberta-base-openai-detector"
+MODEL_NAME = "Organika/sdxl-detector"
 
-_model = None
-_tokenizer = None
+_detector = None
 
 
-def _load_model():
-    global _model, _tokenizer
-    if _model is None:
-        _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        _model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
-        _model.eval()
-    return _model, _tokenizer
+def _load_detector():
+    global _detector
+    if _detector is None:
+        _detector = hf_pipeline("image-classification", model=MODEL_NAME)
+    return _detector
 
 
-def detect_ai_text(text: str) -> dict:
-    if not text or len(text.strip()) < 20:
-        return {
-            "score": None,
-            "verdict": "Text too short",
-            "perplexity": None,
-            "tags": ["need at least 20 characters"],
-        }
+def detect_deepfake(image: Image.Image) -> dict:
+    detector = _load_detector()
+    results = detector(image)
 
-    model, tokenizer = _load_model()
+    scores = {r["label"].lower(): r["score"] for r in results}
+    ai_score = scores.get("artificial", scores.get("fake", 0.0))
+    ai_percent = round(ai_score * 100)
 
-    inputs = tokenizer(
-        text,
-        return_tensors="pt",
-        truncation=True,
-        max_length=512,
-        padding=True,
-    )
-
-    with torch.no_grad():
-        outputs = model(**inputs)
-        probs = F.softmax(outputs.logits, dim=-1)
-
-    # openai-detector: LABEL_0 = Real (human), LABEL_1 = Fake (AI)
-    ai_score = round(probs[0][1].item() * 100)
-
-    if ai_score >= 70:
-        verdict = "likely AI-generated"
-        tags = ["high confidence", "AI patterns detected", "likely generated"]
-    elif ai_score >= 40:
+    if ai_percent >= 70:
+        verdict = "likely AI-generated / deepfake"
+        tags = ["synthetic artifacts detected", "likely generated", "not authentic"]
+    elif ai_percent >= 40:
         verdict = "uncertain"
-        tags = ["mixed signals", "borderline", "unclear signal"]
+        tags = ["mixed signals", "borderline case", "inconclusive"]
     else:
-        verdict = "likely human-written"
-        tags = ["human patterns", "natural variation", "probably authentic"]
+        verdict = "likely real photo"
+        tags = ["natural image patterns", "low synthetic signal", "probably authentic"]
 
     return {
-        "score": ai_score,
+        "score": ai_percent,
         "verdict": verdict,
-        "perplexity": None,
         "tags": tags,
+        "raw": results,
     }
