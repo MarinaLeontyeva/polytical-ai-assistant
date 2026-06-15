@@ -414,29 +414,27 @@ def main() -> None:
         )
 
         if st.button("🔍 Analyze text", disabled=not text_input.strip()):
-            with st.spinner("Running dual analysis..."):
+            with st.spinner("Computing perplexity..."):
                 result = detect_ai_text(text_input)
 
-            if result["combined_score"] is None:
-                st.warning(f"⚠️ {result['verdict']}")
-            else:
-                combined = result["combined_score"]
-                p_score = result["perplexity_score"]
-                r_score = result["roberta_score"]
-                perplexity = result["perplexity_value"]
-                verdict = result["verdict"]
+            score = result["score"]
+            verdict = result["verdict"]
+            perplexity = result["perplexity"]
+            tags = result["tags"]
 
-                if combined >= 65:
+            if score is None:
+                st.warning(f"⚠️ {verdict}")
+            else:
+                if score >= 65:
                     color = "#A32D2D"
                     bg = "#FCEBEB"
-                elif combined >= 40:
+                elif score >= 40:
                     color = "#BA7517"
                     bg = "#FAEEDA"
                 else:
                     color = "#3B6D11"
                     bg = "#EAF3DE"
 
-                # Вердикт
                 st.markdown(
                     f"""
                     <div style="padding:16px; background:{bg}; border-radius:8px;
@@ -445,37 +443,36 @@ def main() -> None:
                             {verdict}
                         </div>
                         <div style="font-size:13px; color:{color}; margin-top:4px;">
-                            Combined score: {combined}%
+                            AI probability: {score}%
                         </div>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
 
-                # Два детектора рядом
-                col1, col2 = st.columns(2)
+                col1, col2 = st.columns([1, 2])
 
                 with col1:
-                    st.markdown("**Method 1 — Perplexity (distilgpt2)**")
-                    st.metric("AI probability", f"{p_score}%")
-                    st.metric("Perplexity value", perplexity)
-                    st.caption(
-                        "Low perplexity = text too smooth = likely AI. "
-                        "Works best for English."
-                    )
+                    st.metric("AI probability", f"{score}%")
+                    st.metric("Perplexity", perplexity)
 
                 with col2:
-                    st.markdown("**Method 2 — RoBERTa classifier**")
-                    st.metric("AI probability", f"{r_score}%")
+                    st.markdown("**What is perplexity?**")
                     st.caption(
-                        "Fine-tuned classifier on human vs ChatGPT texts. "
-                        "Works for English and Russian."
+                        "Perplexity measures how 'surprised' the language model is by the text. "
+                        "AI-generated text is very predictable → low perplexity. "
+                        "Human text is more spontaneous → high perplexity."
                     )
+                    st.markdown("**Thresholds (English):**")
+                    st.caption("< 20 → likely AI · 20–40 → probably AI · "
+                               "40–70 → uncertain · 70–120 → probably human · > 120 → likely human")
+                    st.caption("⚠️ For Russian text results may be less accurate "
+                               "as distilgpt2 is English-only.")
 
                 st.divider()
                 st.caption(
-                    "ℹ️ Combined score = 35% perplexity + 65% RoBERTa. "
-                    "RoBERTa has higher weight as it handles multilingual input better."
+                    "ℹ️ Method: perplexity via distilgpt2 (Radford et al., 2019). "
+                    "Works best for English political texts."
                 )
     with tab3:
         st.header("🖼️ Image Deepfake Detector")
