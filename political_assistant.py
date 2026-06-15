@@ -402,14 +402,14 @@ def main() -> None:
             st.rerun()
 
     # ── TAB 2: детектор фейков ─────────────────────────────────
-    with tab2:
+   with tab2:
         st.header("🔍 AI Text Detector")
         st.caption("Paste a political statement to check if it was likely written by AI")
 
         text_input = st.text_area(
             "Text to analyze",
             height=150,
-            placeholder="e.g. 'Our party stands for the prosperity of every citizen...'",
+            placeholder="e.g. 'Our party stands for the prosperity of every citizen and the greatness of our nation...'",
             label_visibility="collapsed",
         )
 
@@ -425,6 +425,7 @@ def main() -> None:
             if score is None:
                 st.warning(f"⚠️ {verdict}")
             else:
+                # Цвет в зависимости от вердикта
                 if score >= 65:
                     color = "#A32D2D"
                     bg = "#FCEBEB"
@@ -435,21 +436,6 @@ def main() -> None:
                     color = "#3B6D11"
                     bg = "#EAF3DE"
 
-                st.markdown(
-                    f"""
-                    <div style="padding:16px; background:{bg}; border-radius:8px;
-                                border-left:4px solid {color}; margin-bottom:16px;">
-                        <div style="font-size:18px; font-weight:500; color:{color};">
-                            {verdict}
-                        </div>
-                        <div style="font-size:13px; color:{color}; margin-top:4px;">
-                            AI probability: {score}%
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
                 col1, col2 = st.columns([1, 2])
 
                 with col1:
@@ -457,22 +443,33 @@ def main() -> None:
                     st.metric("Perplexity", perplexity)
 
                 with col2:
-                    st.markdown("**What is perplexity?**")
-                    st.caption(
-                        "Perplexity measures how 'surprised' the language model is by the text. "
-                        "AI-generated text is very predictable → low perplexity. "
-                        "Human text is more spontaneous → high perplexity."
+                    st.markdown(
+                        f"""
+                        <div style="padding:16px; background:{bg}; border-radius:8px;
+                                    border-left:4px solid {color};">
+                            <div style="font-size:16px; font-weight:500;
+                                        color:{color}; margin-bottom:8px;">
+                                {verdict}
+                            </div>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                {"".join(
+                                    f'<span style="font-size:12px; background:white; '
+                                    f'color:{color}; padding:3px 8px; border-radius:4px; '
+                                    f'border:1px solid {color}40">{tag}</span>'
+                                    for tag in tags
+                                )}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
                     )
-                    st.markdown("**Thresholds (English):**")
-                    st.caption("< 20 → likely AI · 20–40 → probably AI · "
-                               "40–70 → uncertain · 70–120 → probably human · > 120 → likely human")
-                    st.caption("⚠️ For Russian text results may be less accurate "
-                               "as distilgpt2 is English-only.")
 
                 st.divider()
                 st.caption(
-                    "ℹ️ Method: perplexity via distilgpt2 (Radford et al., 2019). "
-                    "Works best for English political texts."
+                    "ℹ️ How it works: low perplexity means the text is too smooth "
+                    "and predictable for a language model — a common sign of AI generation. "
+                    "Threshold: <40 → likely AI, 40–100 → uncertain, >100 → likely human."
+                )
                 )
     with tab3:
         st.header("🖼️ Image Deepfake Detector")
