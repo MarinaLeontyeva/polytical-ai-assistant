@@ -470,7 +470,7 @@ def main() -> None:
                     "and predictable for a language model — a common sign of AI generation. "
                     "Threshold: <40 → likely AI, 40–100 → uncertain, >100 → likely human."
                 )
-                )
+              
     with tab3:
         st.header("🖼️ Image Deepfake Detector")
         st.caption("Upload a photo to check if it was AI-generated")
