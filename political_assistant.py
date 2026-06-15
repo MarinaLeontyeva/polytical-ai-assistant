@@ -18,6 +18,8 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from rag_pipeline import PoliticalRAGPipeline, format_context
 from fake_detector import detect_ai_text
+from deepfake_detector import detect_deepfake
+
 
 
 # ============================================================
