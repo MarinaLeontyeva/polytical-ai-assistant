@@ -1,98 +1,75 @@
 """
-fake_detector.py — dual AI text detector.
-Method 1: perplexity-based (distilgpt2)
-Method 2: RoBERTa classifier (chatgpt-detector-roberta)
+fake_detector.py — perplexity-based AI text detector using distilgpt2.
+Low perplexity = text too smooth = likely AI-generated.
 """
 
 import math
 import torch
 from transformers import GPT2LMHeadModel, GPT2TokenizerFast
-from transformers import pipeline as hf_pipeline
 
-# ── Model 1: perplexity ──────────────────────────────────────
-_gpt2_model = None
-_gpt2_tokenizer = None
+MODEL_NAME = "distilgpt2"
 
-def _load_gpt2():
-    global _gpt2_model, _gpt2_tokenizer
-    if _gpt2_model is None:
-        _gpt2_tokenizer = GPT2TokenizerFast.from_pretrained("distilgpt2")
-        _gpt2_model = GPT2LMHeadModel.from_pretrained("distilgpt2")
-        _gpt2_model.eval()
-    return _gpt2_model, _gpt2_tokenizer
+_model = None
+_tokenizer = None
+
+
+def _load_model():
+    global _model, _tokenizer
+    if _model is None:
+        _tokenizer = GPT2TokenizerFast.from_pretrained(MODEL_NAME)
+        _model = GPT2LMHeadModel.from_pretrained(MODEL_NAME)
+        _model.eval()
+    return _model, _tokenizer
+
 
 def compute_perplexity(text: str) -> float:
-    model, tokenizer = _load_gpt2()
+    model, tokenizer = _load_model()
     inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
     with torch.no_grad():
         outputs = model(inputs["input_ids"], labels=inputs["input_ids"])
     return math.exp(outputs.loss.item())
 
-def _perplexity_score(perplexity: float) -> int:
-    if perplexity < 5:
-        return 90
-    elif perplexity < 10:
-        return 70
-    elif perplexity < 20:
-        return 45
-    elif perplexity < 40:
-        return 25
-    else:
-        return 10
 
-# ── Model 2: RoBERTa classifier ──────────────────────────────
-_roberta = None
-
-def _load_roberta():
-    global _roberta
-    if _roberta is None:
-        _roberta = hf_pipeline(
-            "text-classification",
-            model="Hello-SimpleAI/chatgpt-detector-roberta",
-            truncation=True,
-            max_length=512,
-        )
-    return _roberta
-
-def _roberta_score(text: str) -> int:
-    classifier = _load_roberta()
-    result = classifier(text)[0]
-    label = result["label"]
-    confidence = result["score"]
-    if label == "ChatGPT":
-        return round(confidence * 100)
-    else:
-        return round((1 - confidence) * 100)
-
-# ── Combined detector ────────────────────────────────────────
 def detect_ai_text(text: str) -> dict:
     if not text or len(text.strip()) < 20:
         return {
-            "perplexity_score": None,
-            "roberta_score": None,
-            "combined_score": None,
+            "score": None,
             "verdict": "Text too short",
-            "perplexity_value": None,
+            "perplexity": None,
+            "tags": ["need at least 20 characters"],
         }
 
     perplexity = compute_perplexity(text)
-    p_score = _perplexity_score(perplexity)
-    r_score = _roberta_score(text)
 
-    # Итоговый счёт: roberta весит больше (она точнее)
-    combined = round(p_score * 0.35 + r_score * 0.65)
-
-    if combined >= 65:
+    # Пороги подобраны для distilgpt2:
+    # English AI-text: perplexity ~20-60
+    # English human text: perplexity ~80-300+
+    # Russian text (любой): perplexity ниже из-за English-only модели,
+    # поэтому пороги сдвинуты вниз
+    if perplexity < 20:
+        score = 90
         verdict = "likely AI-generated"
-    elif combined >= 40:
+        tags = ["very low perplexity", "unusually smooth", "likely AI-generated"]
+    elif perplexity < 40:
+        score = 70
+        verdict = "likely AI-generated"
+        tags = ["low perplexity", "smooth text", "probably AI-generated"]
+    elif perplexity < 70:
+        score = 45
         verdict = "uncertain"
-    else:
+        tags = ["moderate perplexity", "borderline", "unclear signal"]
+    elif perplexity < 120:
+        score = 25
         verdict = "likely human-written"
+        tags = ["higher perplexity", "natural variation", "probably human"]
+    else:
+        score = 10
+        verdict = "likely human-written"
+        tags = ["high perplexity", "irregular style", "likely human"]
 
     return {
-        "perplexity_score": p_score,
-        "roberta_score": r_score,
-        "combined_score": combined,
+        "score": score,
         "verdict": verdict,
-        "perplexity_value": round(perplexity, 1),
+        "perplexity": round(perplexity, 1),
+        "tags": tags,
     }
