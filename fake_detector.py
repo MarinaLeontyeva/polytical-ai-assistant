@@ -1,14 +1,14 @@
 """
-fake_detector.py — AI text detector.
-Uses RoBERTa-base fine-tuned by OpenAI to detect AI-generated text.
-Model: openai-community/roberta-base-openai-detector
+fake_detector.py — perplexity-based AI text detector using distilgpt2.
+Low perplexity = text too smooth and predictable = likely AI-generated.
+Inspired by MELD paper (Li et al., 2026).
 """
 
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import math
 import torch
-import torch.nn.functional as F
+from transformers import GPT2LMHeadModel, GPT2TokenizerFast
 
-MODEL_NAME = "openai-community/roberta-base-openai-detector"
+MODEL_NAME = "distilgpt2"
 
 _model = None
 _tokenizer = None
@@ -17,10 +17,18 @@ _tokenizer = None
 def _load_model():
     global _model, _tokenizer
     if _model is None:
-        _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        _model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+        _tokenizer = GPT2TokenizerFast.from_pretrained(MODEL_NAME)
+        _model = GPT2LMHeadModel.from_pretrained(MODEL_NAME)
         _model.eval()
     return _model, _tokenizer
+
+
+def compute_perplexity(text: str) -> float:
+    model, tokenizer = _load_model()
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+    with torch.no_grad():
+        outputs = model(inputs["input_ids"], labels=inputs["input_ids"])
+    return math.exp(outputs.loss.item())
 
 
 def detect_ai_text(text: str) -> dict:
@@ -32,36 +40,32 @@ def detect_ai_text(text: str) -> dict:
             "tags": ["need at least 20 characters"],
         }
 
-    model, tokenizer = _load_model()
+    perplexity = compute_perplexity(text)
 
-    inputs = tokenizer(
-        text,
-        return_tensors="pt",
-        truncation=True,
-        max_length=512,
-        padding=True,
-    )
-
-    with torch.no_grad():
-        outputs = model(**inputs)
-        probs = F.softmax(outputs.logits, dim=-1)
-
-    # LABEL_0 = Real (human), LABEL_1 = Fake (AI)
-    ai_score = round(probs[0][1].item() * 100)
-
-    if ai_score >= 70:
+    if perplexity < 30:
+        score = 85
         verdict = "likely AI-generated"
-        tags = ["high confidence", "AI patterns detected", "likely generated"]
-    elif ai_score >= 40:
+        tags = ["very low perplexity", "unusually smooth", "likely AI-generated"]
+    elif perplexity < 55:
+        score = 65
+        verdict = "likely AI-generated"
+        tags = ["low perplexity", "smooth text", "probably AI-generated"]
+    elif perplexity < 90:
+        score = 40
         verdict = "uncertain"
-        tags = ["mixed signals", "borderline", "unclear signal"]
-    else:
+        tags = ["moderate perplexity", "borderline", "unclear signal"]
+    elif perplexity < 160:
+        score = 20
         verdict = "likely human-written"
-        tags = ["human patterns", "natural variation", "probably authentic"]
+        tags = ["higher perplexity", "natural variation", "probably human"]
+    else:
+        score = 5
+        verdict = "likely human-written"
+        tags = ["high perplexity", "irregular style", "likely human"]
 
     return {
-        "score": ai_score,
+        "score": score,
         "verdict": verdict,
-        "perplexity": None,
+        "perplexity": round(perplexity, 1),
         "tags": tags,
     }
