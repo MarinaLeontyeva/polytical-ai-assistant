@@ -375,7 +375,7 @@ def main() -> None:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    tab1, tab2 = st.tabs(["🗳️ Political Assistant", "🔍 Fake Detector"])
+    tab1, tab2, tab3 = st.tabs(["🗳️ Political Assistant", "📝 Text Detector", "🖼️ Image Detector"])
 
     # ── TAB 1: существующий ассистент ──────────────────────────
     with tab1:
@@ -470,64 +470,63 @@ def main() -> None:
                     "and predictable for a language model — a common sign of AI generation. "
                     "Threshold: <40 → likely AI, 40–100 → uncertain, >100 → likely human."
                 )
-st.divider()
-st.subheader("🖼️ Image Deepfake Detector")
-st.caption("Upload a photo to check if it was AI-generated")
+with tab3:
+        st.header("🖼️ Image Deepfake Detector")
+        st.caption("Upload a photo to check if it was AI-generated")
 
-uploaded_file = st.file_uploader(
-    "Upload image",
-    type=["jpg", "jpeg", "png", "webp"],
-    label_visibility="collapsed",
-)
+        uploaded_file = st.file_uploader(
+            "Upload image",
+            type=["jpg", "jpeg", "png", "webp"],
+            label_visibility="collapsed",
+        )
 
-if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Uploaded image", width=300)
+        if uploaded_file is not None:
+            image = Image.open(uploaded_file)
+            st.image(image, caption="Uploaded image", width=300)
 
-    if st.button("🖼️ Analyze image"):
-        with st.spinner("Analyzing image..."):
-            img_result = detect_deepfake(image)
+            if st.button("🖼️ Analyze image"):
+                with st.spinner("Analyzing image..."):
+                    img_result = detect_deepfake(image)
 
-        score = img_result["score"]
-        verdict = img_result["verdict"]
-        tags = img_result["tags"]
+                score = img_result["score"]
+                verdict = img_result["verdict"]
+                tags = img_result["tags"]
 
-        if score >= 65:
-            color = "#A32D2D"
-            bg = "#FCEBEB"
-        elif score >= 40:
-            color = "#BA7517"
-            bg = "#FAEEDA"
-        else:
-            color = "#3B6D11"
-            bg = "#EAF3DE"
+                if score >= 65:
+                    color = "#A32D2D"
+                    bg = "#FCEBEB"
+                elif score >= 40:
+                    color = "#BA7517"
+                    bg = "#FAEEDA"
+                else:
+                    color = "#3B6D11"
+                    bg = "#EAF3DE"
 
-        col1, col2 = st.columns([1, 2])
+                col1, col2 = st.columns([1, 2])
 
-        with col1:
-            st.metric("AI probability", f"{score}%")
+                with col1:
+                    st.metric("AI probability", f"{score}%")
 
-        with col2:
-            st.markdown(
-                f"""
-                <div style="padding:16px; background:{bg}; border-radius:8px;
-                            border-left:4px solid {color};">
-                    <div style="font-size:16px; font-weight:500;
-                                color:{color}; margin-bottom:8px;">
-                        {verdict}
-                    </div>
-                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                        {"".join(
-                            f'<span style="font-size:12px; background:white; '
-                            f'color:{color}; padding:3px 8px; border-radius:4px; '
-                            f'border:1px solid {color}40">{tag}</span>'
-                            for tag in tags
-                        )}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
+                with col2:
+                    st.markdown(
+                        f"""
+                        <div style="padding:16px; background:{bg}; border-radius:8px;
+                                    border-left:4px solid {color};">
+                            <div style="font-size:16px; font-weight:500;
+                                        color:{color}; margin-bottom:8px;">
+                                {verdict}
+                            </div>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                {"".join(
+                                    f'<span style="font-size:12px; background:white; '
+                                    f'color:{color}; padding:3px 8px; border-radius:4px; '
+                                    f'border:1px solid {color}40">{tag}</span>'
+                                    for tag in tags
+                                )}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 if __name__ == "__main__":
     main()
