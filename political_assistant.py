@@ -17,6 +17,7 @@ import streamlit as st
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from rag_pipeline import PoliticalRAGPipeline, format_context
+from fake_detector import detect_ai_text
 
 
 # ============================================================
@@ -371,9 +372,9 @@ def main() -> None:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # --- ВКЛАДКИ ---
     tab1, tab2 = st.tabs(["🗳️ Political Assistant", "🔍 Fake Detector"])
 
+    # ── TAB 1: существующий ассистент ──────────────────────────
     with tab1:
         pipeline = load_pipeline()
         if pipeline is None:
@@ -386,9 +387,9 @@ def main() -> None:
         render_chat_history()
 
         placeholders = {
-            "Single": "Ask about a specific party...",
-            "Compare": "Ask a comparative question...",
-            "Quotes": "Topic to find direct quotes about...",
+            "Single": "Ask about a specific party (e.g., 'What is KPRF position on healthcare?')",
+            "Compare": "Ask a comparative question (e.g., 'Compare tax policies')",
+            "Quotes": "Topic to find direct quotes about (e.g., 'education')",
             "Ideology": "Press Enter or type anything — uses selected parties",
         }
         placeholder = placeholders.get(config["mode"], "Ask a question...")
@@ -397,26 +398,75 @@ def main() -> None:
             handle_user_input(user_prompt, pipeline, config)
             st.rerun()
 
+    # ── TAB 2: детектор фейков ─────────────────────────────────
     with tab2:
         st.header("🔍 AI Text Detector")
         st.caption("Paste a political statement to check if it was likely written by AI")
-        st.info("Coming soon — fake detection module (HW5 Task 1)")
 
-    # Mode-specific input placeholder
-    placeholders = {
-        "Single": "Ask about a specific party (e.g., 'What is KPRF position on healthcare?')",
-        "Compare": "Ask a comparative question (e.g., 'Compare tax policies')",
-        "Quotes": "Topic to find direct quotes about (e.g., 'education')",
-        "Ideology": "Press Enter or type anything — uses selected parties",
-    }
-    placeholder = placeholders.get(config["mode"], "Ask a question...")
+        text_input = st.text_area(
+            "Text to analyze",
+            height=150,
+            placeholder="e.g. 'Our party stands for the prosperity of every citizen and the greatness of our nation...'",
+            label_visibility="collapsed",
+        )
 
-    # Either example button click OR chat input triggers the query
-    user_prompt = example_clicked or st.chat_input(placeholder)
+        if st.button("🔍 Analyze text", disabled=not text_input.strip()):
+            with st.spinner("Computing perplexity..."):
+                result = detect_ai_text(text_input)
 
-    if user_prompt:
-        handle_user_input(user_prompt, pipeline, config)
-        st.rerun()
+            score = result["score"]
+            verdict = result["verdict"]
+            perplexity = result["perplexity"]
+            tags = result["tags"]
+
+            if score is None:
+                st.warning(f"⚠️ {verdict}")
+            else:
+                # Цвет в зависимости от вердикта
+                if score >= 65:
+                    color = "#A32D2D"
+                    bg = "#FCEBEB"
+                elif score >= 40:
+                    color = "#BA7517"
+                    bg = "#FAEEDA"
+                else:
+                    color = "#3B6D11"
+                    bg = "#EAF3DE"
+
+                col1, col2 = st.columns([1, 2])
+
+                with col1:
+                    st.metric("AI probability", f"{score}%")
+                    st.metric("Perplexity", perplexity)
+
+                with col2:
+                    st.markdown(
+                        f"""
+                        <div style="padding:16px; background:{bg}; border-radius:8px;
+                                    border-left:4px solid {color};">
+                            <div style="font-size:16px; font-weight:500;
+                                        color:{color}; margin-bottom:8px;">
+                                {verdict}
+                            </div>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                {"".join(
+                                    f'<span style="font-size:12px; background:white; '
+                                    f'color:{color}; padding:3px 8px; border-radius:4px; '
+                                    f'border:1px solid {color}40">{tag}</span>'
+                                    for tag in tags
+                                )}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                st.divider()
+                st.caption(
+                    "ℹ️ How it works: low perplexity means the text is too smooth "
+                    "and predictable for a language model — a common sign of AI generation. "
+                    "Threshold: <40 → likely AI, 40–100 → uncertain, >100 → likely human."
+                )
 
 
 if __name__ == "__main__":
