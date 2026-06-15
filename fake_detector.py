@@ -1,16 +1,14 @@
 """
 fake_detector.py — AI text detector.
-Uses DeBERTa-v3-large fine-tuned on RAID benchmark.
-Model: desklib/ai-text-detector-v1.01
-Currently leads the RAID Benchmark for AI Detection.
-Inspired by MELD paper (Li et al., 2026).
+Uses RoBERTa-base fine-tuned by OpenAI to detect AI-generated text.
+Model: openai-community/roberta-base-openai-detector
 """
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import torch.nn.functional as F
 
-MODEL_NAME = "desklib/ai-text-detector-v1.01"
+MODEL_NAME = "openai-community/roberta-base-openai-detector"
 
 _model = None
 _tokenizer = None
@@ -48,7 +46,7 @@ def detect_ai_text(text: str) -> dict:
         outputs = model(**inputs)
         probs = F.softmax(outputs.logits, dim=-1)
 
-    # desklib модель: label 0 = Human, label 1 = AI
+    # LABEL_0 = Real (human), LABEL_1 = Fake (AI)
     ai_score = round(probs[0][1].item() * 100)
 
     if ai_score >= 70:
