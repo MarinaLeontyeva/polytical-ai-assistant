@@ -402,7 +402,7 @@ def main() -> None:
             st.rerun()
 
     # ── TAB 2: детектор фейков ─────────────────────────────────
-   with tab2:
+    with tab2:
         st.header("🔍 AI Text Detector")
         st.caption("Paste a political statement to check if it was likely written by AI")
 
