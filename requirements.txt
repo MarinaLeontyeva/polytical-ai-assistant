@@ -1,5 +1,6 @@
 torch
 transformers
+torchvision
 Pillow
 langchain
 langchain-community
