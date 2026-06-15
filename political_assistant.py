@@ -440,7 +440,7 @@ def main() -> None:
 
                 with col1:
                     st.metric("AI probability", f"{score}%")
-                    st.metric("Perplexity", perplexity)
+                  
 
                 with col2:
                     st.markdown(
