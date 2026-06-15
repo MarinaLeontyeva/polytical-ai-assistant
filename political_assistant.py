@@ -383,7 +383,7 @@ def main() -> None:
         if pipeline is None:
             error = st.session_state.get("pipeline_error", "Unknown error")
             render_setup_banner(error)
-            return
+            st.stop() 
 
         config = get_sidebar_config(pipeline)
         example_clicked = render_example_buttons(config["mode"])
