@@ -1,14 +1,16 @@
 """
 fake_detector.py — AI text detector.
-Uses roberta-base fine-tuned to detect AI-generated text.
-Model: Hello-SimpleAI/chatgpt-detector-roberta
+Uses DeBERTa-v3-large fine-tuned on RAID benchmark.
+Model: desklib/ai-text-detector-v1.01
+Currently leads the RAID Benchmark for AI Detection.
+Inspired by MELD paper (Li et al., 2026).
 """
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import torch.nn.functional as F
 
-MODEL_NAME = "Hello-SimpleAI/chatgpt-detector-roberta"
+MODEL_NAME = "desklib/ai-text-detector-v1.01"
 
 _model = None
 _tokenizer = None
@@ -46,11 +48,12 @@ def detect_ai_text(text: str) -> dict:
         outputs = model(**inputs)
         probs = F.softmax(outputs.logits, dim=-1)
 
+    # desklib модель: label 0 = Human, label 1 = AI
     ai_score = round(probs[0][1].item() * 100)
 
     if ai_score >= 70:
         verdict = "likely AI-generated"
-        tags = ["classifier confidence high", "AI patterns detected", "likely generated"]
+        tags = ["high confidence", "AI patterns detected", "likely generated"]
     elif ai_score >= 40:
         verdict = "uncertain"
         tags = ["mixed signals", "borderline", "unclear signal"]
