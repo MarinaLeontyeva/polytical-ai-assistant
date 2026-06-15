@@ -1,3 +1,5 @@
+torch
+transformers
 langchain
 langchain-community
 langchain-openai
