@@ -371,19 +371,36 @@ def main() -> None:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    pipeline = load_pipeline()
+    # --- ВКЛАДКИ ---
+    tab1, tab2 = st.tabs(["🗳️ Political Assistant", "🔍 Fake Detector"])
 
-    if pipeline is None:
-        error = st.session_state.get("pipeline_error", "Unknown error")
-        render_setup_banner(error)
-        return
+    with tab1:
+        pipeline = load_pipeline()
+        if pipeline is None:
+            error = st.session_state.get("pipeline_error", "Unknown error")
+            render_setup_banner(error)
+            return
 
-    config = get_sidebar_config(pipeline)
+        config = get_sidebar_config(pipeline)
+        example_clicked = render_example_buttons(config["mode"])
+        render_chat_history()
 
-    # Example question buttons (shown only at the start of conversation)
-    example_clicked = render_example_buttons(config["mode"])
+        placeholders = {
+            "Single": "Ask about a specific party...",
+            "Compare": "Ask a comparative question...",
+            "Quotes": "Topic to find direct quotes about...",
+            "Ideology": "Press Enter or type anything — uses selected parties",
+        }
+        placeholder = placeholders.get(config["mode"], "Ask a question...")
+        user_prompt = example_clicked or st.chat_input(placeholder)
+        if user_prompt:
+            handle_user_input(user_prompt, pipeline, config)
+            st.rerun()
 
-    render_chat_history()
+    with tab2:
+        st.header("🔍 AI Text Detector")
+        st.caption("Paste a political statement to check if it was likely written by AI")
+        st.info("Coming soon — fake detection module (HW5 Task 1)")
 
     # Mode-specific input placeholder
     placeholders = {
