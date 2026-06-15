@@ -402,73 +402,80 @@ def main() -> None:
             st.rerun()
 
     # ── TAB 2: детектор фейков ─────────────────────────────────
-    with tab2:
+   with tab2:
         st.header("🔍 AI Text Detector")
         st.caption("Paste a political statement to check if it was likely written by AI")
 
         text_input = st.text_area(
             "Text to analyze",
             height=150,
-            placeholder="e.g. 'Our party stands for the prosperity of every citizen and the greatness of our nation...'",
+            placeholder="e.g. 'Our party stands for the prosperity of every citizen...'",
             label_visibility="collapsed",
         )
 
         if st.button("🔍 Analyze text", disabled=not text_input.strip()):
-            with st.spinner("Computing perplexity..."):
+            with st.spinner("Running dual analysis..."):
                 result = detect_ai_text(text_input)
 
-            score = result["score"]
-            verdict = result["verdict"]
-            perplexity = result["perplexity"]
-            tags = result["tags"]
-
-            if score is None:
-                st.warning(f"⚠️ {verdict}")
+            if result["combined_score"] is None:
+                st.warning(f"⚠️ {result['verdict']}")
             else:
-                # Цвет в зависимости от вердикта
-                if score >= 65:
+                combined = result["combined_score"]
+                p_score = result["perplexity_score"]
+                r_score = result["roberta_score"]
+                perplexity = result["perplexity_value"]
+                verdict = result["verdict"]
+
+                if combined >= 65:
                     color = "#A32D2D"
                     bg = "#FCEBEB"
-                elif score >= 40:
+                elif combined >= 40:
                     color = "#BA7517"
                     bg = "#FAEEDA"
                 else:
                     color = "#3B6D11"
                     bg = "#EAF3DE"
 
-                col1, col2 = st.columns([1, 2])
+                # Вердикт
+                st.markdown(
+                    f"""
+                    <div style="padding:16px; background:{bg}; border-radius:8px;
+                                border-left:4px solid {color}; margin-bottom:16px;">
+                        <div style="font-size:18px; font-weight:500; color:{color};">
+                            {verdict}
+                        </div>
+                        <div style="font-size:13px; color:{color}; margin-top:4px;">
+                            Combined score: {combined}%
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                # Два детектора рядом
+                col1, col2 = st.columns(2)
 
                 with col1:
-                    st.metric("AI probability", f"{score}%")
-                    st.metric("Perplexity", perplexity)
+                    st.markdown("**Method 1 — Perplexity (distilgpt2)**")
+                    st.metric("AI probability", f"{p_score}%")
+                    st.metric("Perplexity value", perplexity)
+                    st.caption(
+                        "Low perplexity = text too smooth = likely AI. "
+                        "Works best for English."
+                    )
 
                 with col2:
-                    st.markdown(
-                        f"""
-                        <div style="padding:16px; background:{bg}; border-radius:8px;
-                                    border-left:4px solid {color};">
-                            <div style="font-size:16px; font-weight:500;
-                                        color:{color}; margin-bottom:8px;">
-                                {verdict}
-                            </div>
-                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                {"".join(
-                                    f'<span style="font-size:12px; background:white; '
-                                    f'color:{color}; padding:3px 8px; border-radius:4px; '
-                                    f'border:1px solid {color}40">{tag}</span>'
-                                    for tag in tags
-                                )}
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
+                    st.markdown("**Method 2 — RoBERTa classifier**")
+                    st.metric("AI probability", f"{r_score}%")
+                    st.caption(
+                        "Fine-tuned classifier on human vs ChatGPT texts. "
+                        "Works for English and Russian."
                     )
 
                 st.divider()
                 st.caption(
-                    "ℹ️ How it works: low perplexity means the text is too smooth "
-                    "and predictable for a language model — a common sign of AI generation. "
-                    "Threshold: <40 → likely AI, 40–100 → uncertain, >100 → likely human."
+                    "ℹ️ Combined score = 35% perplexity + 65% RoBERTa. "
+                    "RoBERTa has higher weight as it handles multilingual input better."
                 )
     with tab3:
         st.header("🖼️ Image Deepfake Detector")
